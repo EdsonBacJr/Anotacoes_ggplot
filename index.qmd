@@ -1,0 +1,242 @@
+---
+title: "Tutotial básico do ggplot"
+author: "Edson Baccaro Junior"
+format: html
+date: today
+toc: true
+lang: pt
+---
+
+```{r}
+#| warning: false
+#| echo: false # esconde o código do arquivo renderizado
+#| message: false
+
+library(tidyverse)
+```
+
+
+
+## Camadas ggplot
+
+Essas são as camadas que podemos preencher para gerar um gráfico de ggplot, sendo que as três primeiras são necessárias - *dados, estética* e *geometria*.
+
+```{r}
+#| eval: false
+#| messege: false
+#| error: false
+dados |>
+  ggplot(aesthetics()) +
+  geometries(statistics()) +
+  facets() +
+  themes() +
+  coord() +
+  scales()
+```
+
+## Pacotes do R
+
+Se necessário, intale o pacote ['gapminder']{style="color:blue;"}, e outros pacotes requeridos na exploração, e carregue-os.
+
+```{r}
+#| eval: false
+
+if(!requireNamespace("gapminder", quietly = TRUE)) install.packages("gapminder")
+
+if(!requireNamespace("kableExtra", quietly = TRUE)) install.packages("reactable")
+
+if(!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+
+if(!requireNamespace("janitor", quietly = TRUE)) install.packages("janitor")
+
+if(!requireNamespace("janitor", quietly = TRUE)) install.packages("reactablefmtr")
+
+
+library(tidyverse)
+
+```
+
+
+## Dados
+
+Utilizaremos a base de dados *gapminder*, cuja organização defende a análise da realidade com base em dados confiáveis.
+
+Veja mais em: <https://www.gapminder.org/>
+
+```{r}
+#| echo: false
+
+dados_gapminder <- gapminder::gapminder |> janitor::clean_names()
+
+dados_gapminder |> 
+  reactable::reactable(columns = list(
+    country = reactable::colDef(name = "País", align = "center", headerVAlign = "bottom"),
+    continent = reactable::colDef(name = "Continente", align = "center", headerVAlign = "bottom"),
+    year = reactable::colDef(name = "Ano", align = "center", headerVAlign = "bottom"),
+    life_exp = reactable::colDef(name = "Expectativa de vida", align = "center", headerVAlign = "bottom"),
+    pop = reactable::colDef(name = "População", align = "center", headerVAlign = "bottom"),
+    gdp_percap = reactable::colDef(name = "PIB per capita (US$-deflacionado)", align = "center", headerVAlign = "bottom")), 
+                       filterable = TRUE,
+                       searchable = TRUE,
+                       showPageSizeOptions = TRUE) |> 
+  reactablefmtr::add_title("Tabela Gapminder")
+
+```
+
+
+### Características da base
+
+```{r}
+
+glimpse(dados_gapminder)
+
+```
+
+
+## ggplot só com os dados
+
+Oferecer somente a camada de dados para a função [ggplot( )]{style="color:blue;"} retorna em branco, pois faltam as camadas de estética e geometria.
+
+```{r}
+dados_gapminder |>
+  ggplot()
+```
+
+## ggplot com os dados e a estética
+
+Oferecer dados e estética para a função [ggplot( )]{style="color:blue;"} retorna o plano cartesiano com as escalas das variáveis oferecidas para cada eixo. Porém não há gráfico pois falta a camada de geometria.
+
+```{r}
+dados_gapminder |>
+  ggplot(aes(x=gdp_percap, y=life_exp))
+```
+
+## ggplot com as camadas obrigatórias
+
+```{r}
+dados_gapminder |>
+  ggplot(aes(x=gdp_percap, y=life_exp)) +
+  geom_point()
+```
+
+## Adicionar linha de tendência
+
+```{r}
+#| message: false
+dados_gapminder |>
+  ggplot(aes(x=gdp_percap, y=life_exp)) +
+  geom_point() +
+  geom_smooth()
+# pode-se mudar o tipo da regressão pelo argumento method =
+```
+
+## Transparência dos pontos
+
+O argumento [alpha=]{style="color:pink;"} do [geom_point( )]{style="color:blue;"} é útil para ver mais claramente a concentração da massa de dados.
+
+```{r}
+#| message: false
+dados_gapminder |>
+  ggplot(aes(x=gdp_percap, y=life_exp)) +
+  geom_point(alpha=0.1)
+```
+
+## Colorir categoria global e linha de tendência
+
+Ao colorir os pontos por uma variável que etiquetará os dados dentro da estética **global**, é criado uma categorização que afetará o comportamento das camadas subsequentes. Nesse caso, a linha de tendência será criada para cada categoria.
+
+```{r}
+#| message: false
+dados_gapminder |>
+  ggplot(aes(x=gdp_percap, y=life_exp, colour = continent)) +
+  geom_point() +
+  geom_smooth()
+```
+
+## Colorir categoria local e linha de tendência
+
+Em contraste ao exemplo anterior, ao colorir os pontos por uma variável que etiquetará os dados dentro da estética da camada **local**, é criada uma categorização que afetará apenas o comportamento daquela camada. Nesse exemplo a linha de tendência é criada para o conjunto total dos dados, e não para cada categoria.
+
+```{r}
+#| message: false
+dados_gapminder |>
+  ggplot(aes(x=gdp_percap, y=life_exp)) +
+  geom_point(aes(colour = continent)) +
+  geom_smooth()
+```
+
+## Incluir informações textuais no gráfico
+
+```{r}
+#| message: false
+dados_gapminder |>
+  ggplot(aes(x=gdp_percap, y=life_exp)) +
+  geom_point(aes(colour = continent)) +
+  geom_text(aes(label = country))
+```
+
+### Filtrar quais dados quero destacar com texto
+
+Mostrar, dentre toda a base, o país que alcançou a maior expectativa de vida em cada continente, para o ano mais recente da base.
+
+```{r}
+#| message: false
+dados_gapminder |>
+  ggplot(aes(x=gdp_percap, y=life_exp)) +
+  geom_point(aes(colour = continent), alpha = 0.3) +
+  geom_text(data = dados_gapminder |> 
+              group_by(continent) |> 
+              filter(life_exp==max(life_exp), year==max(year)) |> 
+              ungroup(),
+            aes(label = country))
+```
+
+## Usar facetas: 
+
+### Gráfico de linhas para visualizar média e dispersão
+
+Essa visualização possibilita ver a evolução conjunta dos países de cada continente. Se diminuiram a dispersão, quer dizer que os países daquele continente evoluíram de forma generalizada, como é o caso do continente Americano. Diferentemente do caso da Africa, em que a expectativa de vida média aumentou, mas a dispersão também.
+
+```{r}
+#| message: false
+dados_gapminder |>
+  ggplot(aes(x=year, y=life_exp, colour = continent)) +
+  geom_point(colour = "gray") + #ao colocar a cor dos pontos a cor configurada segundo o continente no global não tem efeito nesta camada. Se não tivesse especificado a cor aqui, teria seguido as cores pela categorização de continente.
+  geom_line(aes(group = country),colour = "gray") + #ao agrupar por país, a função cria uma curva que representa a série de tempo de cada país. Quando o argumento group é omitido, as observações de todos os países são ligadas umas às outras na sequência da data, sem agrupar por país.
+  geom_smooth()+ # cria a curva de tendência, e nesse caso serve como uma média
+  theme_minimal()+ # altera o tema de fundo das legendas de continente dentro do gráfico
+  facet_grid(continent ~ .) # essa função produz múltiplos gráficos e os organiza em uma matriz de linhas e colunas. A sintaxe x ~ y oferece qual variável categórica vai determinar as linhas (x) e qual vai determinar as colunas (y). Quando uma das variáveis é omitida por um ponto '.', então cria-se apenas linhas ou colunas, a depender de qual foi omitida. Nesse exemplo, continentes determina a quantidade de linhas, e será organizado em uma coluna.
+
+
+```
+
+### Escala do eixo y livre
+
+Com a flexibilização do eixo y nota-se pouca diferença para a análise dos continentes, exceto para Oceania, que na visualização anterior aparenta não ter ganhos expressivos em expectativa de vida. Com o ajuste do eixo y é possível notar mais claramente uma mudança de trajetoria importante a partir do final da década de 70.
+
+```{r}
+#| message: false
+
+dados_gapminder |>
+  ggplot(aes(x=year, y=life_exp, colour = continent)) +
+  geom_point(colour = "gray") +
+  geom_line(aes(group = country),colour = "gray") + #ao agrupar por país, a função cria uma curva que representa a série de tempo de cada país. Quando o argumento group é omitido, as observações de todos os países são ligadas umas às outras na sequência da data, sem agrupar por país.
+  geom_smooth()+ # cria a curva de tendência, e nesse caso serve como uma média
+  theme_minimal()+ # altera o tema de fundo das legendas de continente dentro do gráfico
+  facet_grid(continent ~ ., scales = "free_y") # cria um eixo y para cada valor da categoria oferecida como argumento, no caso: continent. O argumento scales cria flexibilidade ou fixação dos eixos.
+
+```
+
+## Usar a estética **label** para nomear os pontos do gráfico
+
+Para este exemplo foi usada a tabela *storms* do pacote *dplyr*, já carregado como dependência do pacote *tidyverse*.
+
+```{r}
+#| message: false
+
+storms |> 
+  slice_sample(n=100) |> 
+  ggplot(aes(x=pressure, y=wind)) + 
+  geom_label(aes(label=name))
+
+```
